@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="km" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title id="browser-tab-title">Stock Inventory Ultimate Pro</title>
+  <link id="dynamic-favicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2306b6d4'><path d='M21 16.5l-9 5.25-9-5.25V7.5l9-5.25 9 5.25v9z'/></svg>">
+  
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#06b6d4">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Stock Pro">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="js/tailwind-config.js"></script>
+  <!-- Libraries -->
+  <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-slate-950 text-slate-100 dark:bg-[#070b14] dark:text-slate-100 min-h-screen antialiased flex flex-col selection:bg-cyan-500 selection:text-white transition-colors duration-300 relative overflow-x-hidden cyber-bg-grid">
+
+  <div class="aurora-orb aurora-orb-1"></div>
+  <div class="aurora-orb aurora-orb-2"></div>
+  <div id="toast-wrapper" class="fixed top-5 right-5 z-50 flex flex-col gap-2.5 pointer-events-none"></div>
+
+  <!-- ================= INSTANT ITEM INFO POPUP MODAL ================= -->
+  <div id="instant-item-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 hidden">
+    <div class="glass-box border border-cyan-500/50 rounded-3xl p-6 max-w-md w-full shadow-2xl modal-pop space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-700/70 pb-3">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-9 h-9 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center border border-cyan-500/30">
+            <i data-lucide="qr-code" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-white">ព័ត៌មានទំនិញលម្អិត (Item Details)</h3>
+            <p id="instant-info-action-badge" class="text-[11px] text-emerald-400 font-semibold">ព័ត៌មានទំនិញ</p>
+          </div>
+        </div>
+        <button onclick="closeInstantItemModal()" class="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      
+      <div class="flex items-center gap-3.5 bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800">
+        <img id="instant-info-photo" src="https://placehold.co/100x100/1e293b/white?text=Item" class="w-16 h-16 rounded-xl object-cover border border-slate-700">
+        <div class="flex-1 min-w-0">
+          <p class="text-[10px] text-slate-400 uppercase">Tracking / Barcode</p>
+          <p id="instant-info-code" class="text-base font-mono font-extrabold text-cyan-400 truncate">TRK-0000</p>
+          <div class="flex flex-wrap gap-1.5 mt-1">
+            <span id="instant-info-branch" class="text-[10px] px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800/60">Branch</span>
+            <span id="instant-info-status" class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-semibold">In Stock</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="instant-info-details" class="bg-slate-900/80 rounded-2xl p-3.5 border border-slate-800/80 space-y-2 text-xs"></div>
+
+      <div class="flex gap-2 pt-1">
+        <button onclick="closeInstantItemModal()" class="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white py-2.5 rounded-xl text-xs font-bold transition">បិទផ្ទាំង (Close)</button>
+        <button onclick="closeInstantItemModal(); switchNavTab('records');" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2.5 rounded-xl text-xs font-semibold transition">មើលតារាង</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= PROVINCE RECEIPT PRINT MODAL ================= -->
+  <div id="province-receipt-modal" class="fixed inset-0 z-[65] flex items-center justify-center bg-black/85 backdrop-blur-md p-4 hidden">
+    <div class="glass-box border border-sky-500/40 rounded-3xl p-5 max-w-sm w-full shadow-2xl modal-pop">
+      <div class="flex items-center justify-between border-b border-slate-700/60 pb-3 mb-4 no-print">
+        <h3 class="text-sm font-bold text-sky-300 flex items-center space-x-2">
+          <i data-lucide="receipt" class="w-4 h-4"></i>
+          <span>វិក័យបត្រផ្ញើតាមស្រុក (Shipping Receipt)</span>
+        </h3>
+        <button onclick="closeProvinceReceiptModal()" class="text-slate-400 hover:text-white p-1"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+
+      <div id="province-receipt-sheet" class="bg-white text-slate-900 rounded-2xl p-4 shadow-inner border border-slate-300 space-y-2.5 mx-auto max-w-[310px] text-left">
+        <div class="text-center border-b-2 border-dashed border-slate-400 pb-2">
+          <p id="rcp-appname" class="text-xs font-extrabold uppercase tracking-wide text-slate-900">STOCK INVENTORY PRO</p>
+          <p class="text-[11px] font-bold text-slate-700 mt-0.5">វិក័យបត្រផ្ញើអីវ៉ាន់តាមស្រុក / ខេត្ត</p>
+          <p id="rcp-date" class="text-[10px] text-slate-500 mt-0.5">Date: -</p>
+        </div>
+
+        <div class="space-y-1.5 text-xs border-b border-dashed border-slate-300 pb-2.5">
+          <div class="flex justify-between gap-2">
+            <span class="text-slate-600 font-medium">Shipping Company:</span>
+            <span id="rcp-company" class="font-bold text-slate-900 text-right">-</span>
+          </div>
+          <div class="flex justify-between gap-2">
+            <span class="text-slate-600 font-medium">Receiver Phone:</span>
+            <span id="rcp-receiver" class="font-mono font-bold text-slate-900 text-right">-</span>
+          </div>
+          <div class="flex justify-between gap-2">
+            <span class="text-slate-600 font-medium">Sender Phone:</span>
+            <span id="rcp-sender" class="font-mono font-bold text-slate-900 text-right">-</span>
+          </div>
+          <div class="flex justify-between gap-2">
+            <span class="text-slate-600 font-medium">Location:</span>
+            <span id="rcp-location" class="font-bold text-slate-900 text-right">-</span>
+          </div>
+          <div class="flex justify-between items-center bg-slate-100 px-2.5 py-1.5 rounded-lg border border-slate-300 mt-1">
+            <span class="text-slate-800 font-bold">ចំនួន Tracking:</span>
+            <span id="rcp-count" class="text-base font-mono font-black text-slate-900">0</span>
+          </div>
+        </div>
+
+        <div class="space-y-1">
+          <p class="text-[10px] font-bold text-slate-600 uppercase">បញ្ជីលេខ Tracking ដែលបានស្កេន៖</p>
+          <div id="rcp-trackings-list" class="text-[11px] font-mono text-slate-900 bg-slate-50 p-2 rounded-lg border border-slate-200 space-y-0.5 max-h-36 overflow-y-auto"></div>
+        </div>
+
+        <div class="pt-1 flex flex-col items-center justify-center border-t border-dashed border-slate-300">
+          <svg id="rcp-barcode-canvas" class="w-full max-h-12"></svg>
+          <p id="rcp-batch-id" class="text-[9px] font-mono text-slate-500 mt-0.5">ID: -</p>
+        </div>
+      </div>
+
+      <div class="mt-4 flex gap-2 no-print">
+        <button onclick="window.print()" class="flex-1 bg-sky-600 hover:bg-sky-500 text-white py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2">
+          <i data-lucide="printer" class="w-4 h-4"></i><span>ព្រីនវិក័យបត្រ (Print)</span>
+        </button>
+        <button onclick="closeProvinceReceiptModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2.5 rounded-xl text-xs font-medium transition">បិទ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: ADD PROVINCE SHIPPING COMPANY ================= -->
+  <div id="modal-add-prov-company" class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 hidden">
+    <div class="glass-box border border-sky-500/40 rounded-3xl p-6 max-w-sm w-full shadow-2xl modal-pop space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="text-sm font-bold text-sky-400 flex items-center space-x-2">
+          <i data-lucide="truck" class="w-4 h-4"></i><span>បន្ថែមក្រុមហ៊ុនដឹកជញ្ជូនតាមស្រុក</span>
+        </h3>
+        <button onclick="closeAddProvCompanyModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <div>
+        <label class="block text-xs text-slate-300 mb-1.5">ឈ្មោះក្រុមហ៊ុនដឹកជញ្ជូនតាមស្រុក (Shipping Company)</label>
+        <input type="text" id="input-new-prov-company" onkeydown="if(event.key==='Enter') saveNewProvCompany()" placeholder="ឧ. វីរៈប៊ុនថាំ, ឡានឈ្នួលកំពត..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none focus:ring-2 focus:ring-sky-500">
+      </div>
+      <div class="flex gap-2">
+        <button onclick="saveNewProvCompany()" class="flex-1 bg-sky-600 hover:bg-sky-500 text-white py-2.5 rounded-xl text-xs font-semibold transition">បន្ថែម (Add)</button>
+        <button onclick="closeAddProvCompanyModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2.5 rounded-xl text-xs transition">បោះបង់</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= LOGOUT CONFIRMATION MODAL ================= -->
+  <div id="confirm-logout-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 hidden">
+    <div class="glass-box border border-rose-500/40 rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center modal-pop">
+      <div class="w-14 h-14 rounded-2xl bg-rose-500/20 text-rose-400 mx-auto flex items-center justify-center mb-4 border border-rose-500/30">
+        <i data-lucide="log-out" class="w-7 h-7"></i>
+      </div>
+      <h3 class="text-base font-bold mb-2">តើអ្នកពិតជាចង់ចាកចេញមែនទេ?</h3>
+      <p class="text-xs text-slate-400 mb-6">វគ្គប្រើប្រាស់បច្ចុប្បន្នរបស់អ្នកនឹងត្រូវបានបិទសុវត្ថិភាព!</p>
+      <div class="flex gap-2.5">
+        <button onclick="executeLogout()" class="flex-1 bg-rose-600 hover:bg-rose-500 text-white py-2.5 rounded-xl text-xs font-semibold transition">បាទ/ចាស ចាកចេញ</button>
+        <button onclick="closeLogoutModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2.5 rounded-xl text-xs font-medium transition">បោះបង់</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= CONFIRM DELETE MODAL ================= -->
+  <div id="confirm-delete-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 hidden">
+    <div class="glass-box border border-rose-500/40 rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center modal-pop">
+      <div class="w-14 h-14 rounded-2xl bg-rose-500/20 text-rose-400 mx-auto flex items-center justify-center mb-4 border border-rose-500/30">
+        <i data-lucide="trash-2" class="w-7 h-7"></i>
+      </div>
+      <h3 class="text-base font-bold mb-2">តើអ្នកប្រាកដជាចង់លុបមែនទេ?</h3>
+      <p class="text-xs text-slate-400 mb-6">ទិន្នន័យនេះនឹងត្រូវលុបចេញពីប្រព័ន្ធ Cloud ជាអចិន្ត្រៃយ៍!</p>
+      <div class="flex gap-2.5">
+        <button id="btn-confirm-delete-action" class="flex-1 bg-rose-600 hover:bg-rose-500 text-white py-2.5 rounded-xl text-xs font-semibold transition">បាទ/ចាស លុបចេញ</button>
+        <button onclick="closeDeleteModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2.5 rounded-xl text-xs font-medium transition">បោះបង់</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: ADD CUSTOM DELIVERY ================= -->
+  <div id="modal-add-delivery" class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 hidden">
+    <div class="glass-box border border-cyan-500/40 rounded-3xl p-6 max-w-sm w-full shadow-2xl modal-pop space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="text-sm font-bold text-cyan-400 flex items-center space-x-2">
+          <i data-lucide="truck" class="w-4 h-4"></i><span>បន្ថែមប្រភេទ Delivery ថ្មី</span>
+        </h3>
+        <button onclick="closeAddDeliveryModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <div>
+        <label class="block text-xs text-slate-300 mb-1.5">ឈ្មោះក្រុមហ៊ុន ឬមធ្យោបាយដឹកជញ្ជូន</label>
+        <input type="text" id="input-new-delivery-name" onkeydown="if(event.key==='Enter') saveNewDeliveryOption()" placeholder="ឧ. Grab, CE Express, ឡានក្រុង..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none focus:ring-2 focus:ring-cyan-500">
+      </div>
+      <div class="flex gap-2">
+        <button onclick="saveNewDeliveryOption()" class="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white py-2.5 rounded-xl text-xs font-semibold transition">បន្ថែម (Add)</button>
+        <button onclick="closeAddDeliveryModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2.5 rounded-xl text-xs transition">បោះបង់</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= PRINT STICKER MODAL ================= -->
+  <div id="print-modal-container" class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 hidden">
+    <div class="glass-box border rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center modal-pop">
+      <div class="flex items-center justify-between border-b border-slate-700/60 pb-3 mb-4 no-print">
+        <h3 class="text-sm font-bold flex items-center space-x-2">
+          <i data-lucide="printer" class="w-4 h-4 text-cyan-400"></i>
+          <span>Print Sticker Label</span>
+        </h3>
+        <button onclick="closePrintModal()" class="text-slate-400 hover:text-white p-1"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <div id="print-sticker-sheet" class="bg-white text-slate-900 rounded-2xl p-4 shadow-inner border border-slate-300 flex flex-col items-center justify-center space-y-2 mx-auto max-w-[280px]">
+        <div class="w-full text-center border-b border-slate-300 pb-1">
+          <p id="lbl-sticker-appname" class="text-[11px] font-bold text-slate-900 uppercase">STOCK INVENTORY</p>
+          <p id="lbl-sticker-branch" class="text-[10px] font-bold text-cyan-700">Branch: Main</p>
+          <p id="lbl-sticker-delivery" class="text-[10px] font-bold text-amber-700">Delivery: -</p>
+        </div>
+        <svg id="barcode-canvas" class="w-full max-h-16"></svg>
+        <div id="qrcode-box" class="py-1 flex justify-center"></div>
+        <div class="w-full text-center border-t border-slate-300 pt-1">
+          <p id="lbl-sticker-code" class="text-xs font-mono font-bold tracking-widest text-slate-900">TRK-000000</p>
+          <p id="lbl-sticker-date" class="text-[9px] text-slate-500">Date: 2026-11-15</p>
+        </div>
+      </div>
+      <div class="mt-5 flex gap-2 no-print">
+        <button onclick="window.print()" class="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white py-2.5 rounded-xl text-xs font-semibold transition flex items-center justify-center space-x-2">
+          <i data-lucide="printer" class="w-4 h-4"></i><span>ព្រីន (Print Now)</span>
+        </button>
+        <button onclick="closePrintModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2.5 rounded-xl text-xs font-medium transition">បិទ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: RECORD RETURN ITEM ================= -->
+  <div id="modal-return-item" class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 hidden">
+    <div class="glass-box border border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl modal-pop">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+        <h3 class="text-sm font-bold flex items-center space-x-2 text-rose-400">
+          <i data-lucide="corner-down-left" class="w-4 h-4"></i><span>កត់ត្រាអីវ៉ាន់ Return</span>
+        </h3>
+        <button onclick="closeReturnModal()" class="text-slate-400 hover:text-white p-1"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <form onsubmit="saveReturnRecord(event)" class="space-y-3.5 text-xs">
+        <div>
+          <label class="block text-slate-300 mb-1">សាខា (Branch)</label>
+          <select id="ret-input-branch" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none"></select>
+        </div>
+        <div>
+          <label class="block text-slate-300 mb-1">លេខ Tracking / Barcode</label>
+          <div class="flex gap-2">
+            <input type="text" id="ret-input-barcode" required placeholder="បញ្ចូលលេខ Tracking..." class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:ring-2 focus:ring-rose-500">
+            <button type="button" onclick="startEvidenceScanner('ret-input-barcode')" class="bg-slate-800 hover:bg-slate-700 text-rose-400 px-3 py-2 rounded-xl border border-slate-700"><i data-lucide="camera" class="w-4 h-4"></i></button>
+          </div>
+        </div>
+        <div>
+          <label class="block text-slate-300 mb-1">មូលហេតុនៃការ Return</label>
+          <input type="text" id="ret-input-reason" required placeholder="ឧ. អតិថិជនមិននៅទទួល..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:ring-2 focus:ring-rose-500">
+        </div>
+        <div>
+          <label class="block text-slate-300 mb-1">ទីតាំង Return</label>
+          <input type="text" id="ret-input-location" required placeholder="ឧ. ឃ្លាំងកណ្តាល..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:ring-2 focus:ring-rose-500">
+        </div>
+        <div>
+          <label class="block text-slate-300 mb-1">ថតរូបភស្តុតាង (Evidence Snapshot)</label>
+          <input type="file" id="ret-input-photo" accept="image/*" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-rose-500/20 file:text-rose-300">
+        </div>
+        <div class="flex gap-2 pt-2">
+          <button type="submit" class="flex-1 bg-rose-600 hover:bg-rose-500 text-white py-2.5 rounded-xl font-semibold transition">រក្សាទុកការ Return</button>
+          <button type="button" onclick="closeReturnModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2.5 rounded-xl transition">បោះបង់</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: RECORD CUSTOMER ISSUE ================= -->
+  <div id="modal-customer-issue" class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 hidden">
+    <div class="glass-box border border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl modal-pop">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+        <h3 class="text-sm font-bold flex items-center space-x-2 text-amber-400">
+          <i data-lucide="alert-triangle" class="w-4 h-4"></i><span>អីវ៉ាន់ភ្ញៀវយកមកវិញ</span>
+        </h3>
+        <button onclick="closeCustomerIssueModal()" class="text-slate-400 hover:text-white p-1"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <form onsubmit="saveCustomerIssueRecord(event)" class="space-y-3.5 text-xs">
+        <div>
+          <label class="block text-slate-300 mb-1">សាខា (Branch)</label>
+          <select id="cust-input-branch" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none"></select>
+        </div>
+        <div>
+          <label class="block text-slate-300 mb-1">លេខ Tracking / Barcode</label>
+          <div class="flex gap-2">
+            <input type="text" id="cust-input-barcode" required placeholder="បញ្ចូលលេខ Tracking..." class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:ring-2 focus:ring-amber-500">
+            <button type="button" onclick="startEvidenceScanner('cust-input-barcode')" class="bg-slate-800 hover:bg-slate-700 text-amber-400 px-3 py-2 rounded-xl border border-slate-700"><i data-lucide="camera" class="w-4 h-4"></i></button>
+          </div>
+        </div>
+        <div>
+          <label class="block text-slate-300 mb-1">ប្រភេទបញ្ហាទំនិញ</label>
+          <select id="cust-input-category" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none">
+            <option value="DAMAGED">ទំនិញខូច / បែកបាក់ (Damaged)</option>
+            <option value="WRONG_COLOR">ទំនិញខុសពណ៌ (Wrong Color)</option>
+            <option value="WRONG_SIZE">ទំនិញខុសទំហំ (Wrong Size)</option>
+            <option value="OTHER">បញ្ហាផ្សេងៗ (Other)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-slate-300 mb-1">បរិយាយលម្អិតបន្ថែម</label>
+          <textarea id="cust-input-note" rows="2" placeholder="បញ្ជាក់ពណ៌ ទំហំ ឬកន្លែងដែលខូច..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none"></textarea>
+        </div>
+        <div>
+          <label class="block text-slate-300 mb-1">ថតរូបភស្តុតាង</label>
+          <input type="file" id="cust-input-photo" accept="image/*" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-amber-500/20 file:text-amber-300">
+        </div>
+        <div class="flex gap-2 pt-2">
+          <button type="submit" class="flex-1 bg-amber-600 hover:bg-amber-500 text-white py-2.5 rounded-xl font-semibold transition">កត់ត្រាបញ្ហាភ្ញៀវ</button>
+          <button type="button" onclick="closeCustomerIssueModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2.5 rounded-xl transition">បោះបង់</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Evidence Scanner Modal -->
+  <div id="evidence-scanner-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 hidden">
+    <div class="glass-box border border-slate-800 rounded-3xl p-5 max-w-sm w-full shadow-2xl text-center modal-pop">
+      <div class="flex items-center justify-between border-b border-slate-700/60 pb-3 mb-3">
+        <h3 class="text-xs font-bold text-white">ស្កេនកូដ</h3>
+        <button onclick="stopEvidenceScanner()" class="text-slate-400 hover:text-white p-1"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <div id="evidence-reader" class="w-full bg-black rounded-xl overflow-hidden min-h-[220px]"></div>
+    </div>
+  </div>
+
+  <!-- ================= 1. LOGIN & SIGN-UP MODAL ================= -->
+  <div id="login-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/92 backdrop-blur-2xl p-4 transition-all duration-500">
+    <div id="login-card-container" class="bg-slate-900 border border-cyan-500/30 rounded-3xl p-6 sm:p-8 max-w-md w-full relative overflow-hidden shadow-2xl">
+      <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-sky-400 to-indigo-500"></div>
+      <div class="text-center mb-6">
+        <div class="w-16 h-16 bg-gradient-to-tr from-cyan-500 to-blue-600 rounded-2xl mx-auto flex items-center justify-center text-white mb-3 shadow-lg overflow-hidden">
+          <img id="login-logo-img" src="" alt="App Logo" class="w-full h-full object-cover hidden">
+          <i id="login-logo-icon" data-lucide="boxes" class="w-8 h-8"></i>
+        </div>
+        <h2 id="login-app-title" class="text-2xl font-black text-white">Stock Inventory</h2>
+        <p class="text-xs text-slate-400 mt-1">ប្រព័ន្ធគ្រប់គ្រងស្តុក Multi-Branch & Realtime Cloud Sync</p>
+        <button type="button" onclick="openCloudSetupModal()" class="mt-2 inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-[10px] font-mono border border-slate-700 bg-slate-950 text-slate-300 hover:border-cyan-500 transition">
+          <span class="cloud-dot w-2 h-2 rounded-full bg-slate-500"></span>
+          <span class="cloud-text">Cloud: មិនទាន់ភ្ជាប់</span>
+        </button>
+      </div>
+
+      <div class="flex bg-slate-950 p-1.5 rounded-2xl border border-slate-800 mb-5">
+        <button id="auth-tab-btn-login" onclick="switchAuthTab('login')" class="flex-1 py-2 text-xs font-bold rounded-xl text-white bg-cyan-600 transition flex items-center justify-center space-x-1.5">
+          <i data-lucide="log-in" class="w-3.5 h-3.5"></i><span>ចូលប្រព័ន្ធ (Login)</span>
+        </button>
+        <button id="auth-tab-btn-signup" onclick="switchAuthTab('signup')" class="flex-1 py-2 text-xs font-bold rounded-xl text-slate-400 hover:text-white transition flex items-center justify-center space-x-1.5">
+          <i data-lucide="user-plus" class="w-3.5 h-3.5"></i><span>ចុះឈ្មោះ (Sign Up)</span>
+        </button>
+      </div>
+
+      <div id="login-error-banner" class="hidden mb-4 p-3 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-xs text-rose-300 flex items-center space-x-2">
+        <i data-lucide="alert-circle" class="w-4 h-4 flex-shrink-0 text-rose-400"></i>
+        <span id="login-error-text">ឈ្មោះអ្នកប្រើប្រាស់ ឬពាក្យសម្ងាត់មិនត្រឹមត្រូវទេ!</span>
+      </div>
+
+      <form id="form-auth-login" onsubmit="handleLoginSubmit(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1.5">ឈ្មោះអ្នកប្រើប្រាស់ ឬ Email</label>
+          <input type="text" id="input-username" required placeholder="បញ្ចូល username ឬ Gmail" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-cyan-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1.5">ពាក្យសម្ងាត់</label>
+          <input type="password" id="input-password" required placeholder="បញ្ចូលពាក្យសម្ងាត់" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-cyan-500 outline-none">
+        </div>
+        <button type="submit" class="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold py-3 rounded-xl shadow-lg transition flex items-center justify-center space-x-2">
+          <span>ចូលប្រព័ន្ធ</span><i data-lucide="log-in" class="w-4 h-4"></i>
+        </button>
+      </form>
+
+      <form id="form-auth-signup" onsubmit="handleSignUpSubmit(event)" class="space-y-3 hidden">
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">ឈ្មោះពេញ (Full Name)</label>
+          <input type="text" id="signup-fullname" required placeholder="ឈ្មោះពេញរបស់អ្នក" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">អាសយដ្ឋាន Gmail</label>
+          <input type="email" id="signup-email" required placeholder="example@gmail.com" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Username</label>
+            <input type="text" id="signup-username" required placeholder="username" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">សាខា (Branch)</label>
+            <select id="signup-branch" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-2.5 py-2 text-xs text-white outline-none"></select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">តួនាទី (Role)</label>
+            <select id="signup-role" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-2.5 py-2 text-xs text-white outline-none"></select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">ពាក្យសម្ងាត់</label>
+            <input type="password" id="signup-password" required placeholder="បង្កើតពាក្យសម្ងាត់" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none">
+          </div>
+        </div>
+        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl shadow-lg transition flex items-center justify-center space-x-2">
+          <i data-lucide="send" class="w-4 h-4"></i><span>ស្នើសុំ Sign Up</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= 2. TOP HEADER NAVIGATION ================= -->
+  <header class="bg-slate-900/90 border-b border-slate-800 backdrop-blur-xl sticky top-0 z-40 shadow-lg">
+    <div class="max-w-7xl mx-auto px-3 sm:px-4 h-16 flex items-center justify-between gap-2">
+      <div class="flex items-center space-x-2.5 shrink-0">
+        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white overflow-hidden">
+          <img id="top-logo-img" src="" alt="App Logo" class="w-full h-full object-cover hidden">
+          <i id="top-logo-icon" data-lucide="boxes" class="w-5 h-5"></i>
+        </div>
+        <div class="hidden md:block">
+          <h1 id="app-title-display" class="text-sm font-bold leading-tight">Stock Inventory</h1>
+          <div class="flex items-center space-x-1.5 text-[10px] font-mono">
+            <span class="cloud-dot w-2 h-2 rounded-full bg-slate-500"></span>
+            <span class="cloud-text text-emerald-400">Cloud: Checking...</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-1.5 sm:space-x-2 overflow-x-auto no-scrollbar">
+        <div class="hidden xl:flex items-center bg-slate-800/90 border border-slate-700 rounded-xl px-2.5 py-1 text-xs">
+          <i data-lucide="building-2" class="w-3.5 h-3.5 text-cyan-400 mr-1.5"></i>
+          <select id="header-branch-selector" onchange="onHeaderBranchChange()" class="bg-transparent text-white font-semibold outline-none cursor-pointer"></select>
+        </div>
+
+        <nav class="flex bg-slate-800/80 p-1 rounded-xl text-xs font-semibold border border-slate-700 overflow-x-auto">
+          <button id="nav-btn-scanner" onclick="switchNavTab('scanner')" class="px-2.5 sm:px-3 py-1.5 rounded-lg bg-cyan-600 text-white transition flex items-center space-x-1 whitespace-nowrap">
+            <i data-lucide="scan" class="w-3.5 h-3.5"></i><span>ស្កេនស្តុក</span>
+          </button>
+          <button id="nav-btn-records" onclick="switchNavTab('records')" class="px-2.5 sm:px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition flex items-center space-x-1 whitespace-nowrap relative">
+            <i data-lucide="database" class="w-3.5 h-3.5 text-purple-400"></i><span>កំណត់ត្រាស្តុក</span>
+            <span id="nav-records-count" class="ml-1 px-1.5 py-0.2 rounded-full bg-slate-700 text-cyan-300 text-[10px] font-mono">0</span>
+          </button>
+          <button id="nav-btn-delivery" onclick="switchNavTab('delivery')" class="px-2.5 sm:px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition flex items-center space-x-1 whitespace-nowrap">
+            <i data-lucide="truck" class="w-3.5 h-3.5 text-amber-400"></i><span>ដឹកជញ្ជូន</span>
+          </button>
+          <button id="nav-btn-province" onclick="switchNavTab('province')" class="px-2.5 sm:px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition flex items-center space-x-1 whitespace-nowrap">
+            <i data-lucide="map-pin" class="w-3.5 h-3.5 text-sky-400"></i><span>ផ្ញើតាមស្រុក</span>
+          </button>
+          <button id="nav-btn-audit" onclick="switchNavTab('audit')" class="px-2.5 sm:px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition flex items-center space-x-1 whitespace-nowrap">
+            <i data-lucide="clipboard-check" class="w-3.5 h-3.5 text-emerald-400"></i><span>រាប់ស្តុក</span>
+          </button>
+          <button id="nav-btn-returns" onclick="switchNavTab('returns')" class="px-2.5 sm:px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition flex items-center space-x-1 whitespace-nowrap">
+            <i data-lucide="corner-down-left" class="w-3.5 h-3.5 text-rose-400"></i><span>Return</span>
+          </button>
+          <button id="nav-btn-settings" onclick="switchNavTab('settings')" class="px-2.5 sm:px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition flex items-center space-x-1 hidden relative whitespace-nowrap">
+            <i data-lucide="sliders" class="w-3.5 h-3.5 text-amber-400"></i><span>Settings</span>
+            <span id="badge-pending-count" class="hidden absolute -top-1 -right-1 bg-rose-500 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-mono">0</span>
+          </button>
+        </nav>
+
+        <button id="btn-lang-toggle" onclick="toggleLang()" title="Language / ភាសា" class="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 text-[11px] font-bold shrink-0">EN</button>
+        <button id="btn-voice-toggle" onclick="toggleVoiceAlert()" title="បើក/បិទសំឡេង Alert" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 transition shrink-0">
+          <i id="voice-toggle-icon" data-lucide="volume-2" class="w-4 h-4"></i>
+        </button>
+
+        <button onclick="toggleThemeMode()" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 transition hidden sm:block shrink-0">
+          <i id="theme-toggle-icon" data-lucide="sun" class="w-4 h-4"></i>
+        </button>
+
+        <div class="text-right hidden lg:block pl-1 shrink-0">
+          <p id="nav-username" class="text-xs font-semibold">User</p>
+          <span id="nav-userrole" class="text-[9px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 font-mono">OPERATOR</span>
+        </div>
+
+        <button onclick="triggerLogoutModal()" class="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition shrink-0">
+          <i data-lucide="log-out" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= TAB 1: CONTINUOUS AUTOMATIC SCANNER ================= -->
+  <main id="tab-scanner" class="max-w-3xl mx-auto px-4 py-6 flex-1 w-full space-y-5 z-10 relative">
+    <div class="glass-box border border-slate-800/80 rounded-3xl p-6 shadow-2xl space-y-5">
+      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-4">
+        <div class="flex items-center space-x-2.5">
+          <span class="p-2.5 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"><i data-lucide="scan" class="w-5 h-5"></i></span>
+          <div>
+            <h2 class="font-bold text-base">Continuous Auto QR & Barcode Scanner</h2>
+            <p class="text-[11px] text-slate-400">ស្កេនចាប់យករូបភាព និង Barcode ជាប់គ្នា Automatic + Auto-Zoom ~2.0x</p>
+          </div>
+        </div>
+        <div class="flex bg-slate-900 p-1 rounded-xl text-xs font-semibold border border-slate-700">
+          <button id="btn-mode-in" onclick="changeMode('IN')" class="px-4 py-1.5 rounded-lg bg-cyan-600 text-white shadow transition">ស្កេនចូល (Stock In)</button>
+          <button id="btn-mode-out" onclick="changeMode('OUT')" class="px-4 py-1.5 rounded-lg text-slate-400 hover:text-white transition">ស្កេនបើក (Stock Out)</button>
+        </div>
+      </div>
+
+      <div class="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-700/80 space-y-1.5">
+        <label class="text-[11px] text-slate-400 flex items-center space-x-1.5 font-medium">
+          <i data-lucide="map-pin" class="w-3.5 h-3.5 text-cyan-400"></i>
+          <span>សាខាប្រតិបត្តិការ (Branch)៖</span>
+        </label>
+        <select id="scan-active-branch" class="w-full bg-slate-800 border border-slate-600 rounded-xl px-3 py-2 text-xs text-cyan-300 font-bold outline-none"></select>
+      </div>
+
+      <!-- CONTINUOUS CAMERA VIEWPORT WITH ZOOM CONTROLS -->
+      <div class="scanner-viewport-box rounded-2xl min-h-[310px] border-2 border-cyan-500/40 flex items-center justify-center relative shadow-inner">
+        <div id="reader" class="w-full"></div>
+        <div id="laser-line" class="laser-line-anim hidden"></div>
+        
+        <!-- ZOOM & TORCH CONTROLS OVERLAY -->
+        <div id="scanner-overlay-controls" class="hidden absolute top-3 right-3 left-3 z-20 flex flex-wrap items-center justify-between gap-2 bg-black/60 backdrop-blur-md p-2 rounded-2xl border border-cyan-500/30">
+          <div class="flex items-center gap-1.5">
+            <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-[10px] text-emerald-400 font-mono flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> 2.0x ZOOM
+            </span>
+            <button type="button" onclick="setZoomLevel('main', 1)" class="zoom-btn-main-1 px-2 py-1 rounded-lg bg-slate-800 hover:bg-cyan-600 text-[10px] font-bold text-white transition">1x</button>
+            <button type="button" onclick="setZoomLevel('main', 2)" class="zoom-btn-main-2 px-2 py-1 rounded-lg bg-cyan-600 text-[10px] font-bold text-white transition">2x</button>
+            <button type="button" onclick="setZoomLevel('main', 3)" class="zoom-btn-main-3 px-2 py-1 rounded-lg bg-slate-800 hover:bg-cyan-600 text-[10px] font-bold text-white transition">3x</button>
+            <input type="range" id="zoom-slider-main" min="1" max="5" step="0.5" value="2" oninput="onZoomSliderChange('main', this.value)" class="w-20 accent-cyan-400 cursor-pointer hidden sm:block">
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button type="button" onclick="toggleFocusBarcode()" class="focus-barcode-btn px-2 py-1 rounded-xl text-[10px] font-bold border transition">🎯 Focus</button>
+            <button id="btn-main-torch" onclick="toggleScannerTorch('main')" class="px-2.5 py-1 rounded-xl bg-slate-900/90 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[10px] font-bold flex items-center gap-1">
+              <i data-lucide="flashlight" class="w-3.5 h-3.5"></i>
+              <span id="lbl-main-torch">ពន្លឺ</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="camera-idle" class="text-center p-6 space-y-3 z-10">
+          <div class="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center mx-auto text-cyan-400">
+            <i data-lucide="qr-code" class="w-8 h-8"></i>
+          </div>
+          <p class="text-xs text-slate-300 font-medium">ចុចប៊ូតុង <span class="text-cyan-400 font-bold">Scan ឥឡូវនេះ</span> ដើម្បីបើកកាមេរ៉ា (Auto-Zoom ~2.0x ស្រាប់ពីចម្ងាយ)</p>
+        </div>
+      </div>
+
+      <div class="flex gap-3">
+        <button id="btn-cam-start" onclick="startScannerCamera()" class="flex-1 bg-gradient-to-r from-cyan-600 via-emerald-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white py-3.5 rounded-xl font-bold text-sm flex items-center justify-center space-x-2 shadow-lg shadow-cyan-500/20 transition">
+          <i data-lucide="scan-line" class="w-5 h-5"></i><span>ចុច Scan បើកកាមេរ៉ាភ្លាមៗ (Auto Scan + Zoom)</span>
+        </button>
+        <button id="btn-cam-stop" onclick="stopScannerCamera()" class="hidden flex-1 bg-rose-600/90 hover:bg-rose-600 text-white py-3.5 rounded-xl font-bold text-xs flex items-center justify-center space-x-2 transition">
+          <i data-lucide="square" class="w-4 h-4"></i><span>បិទកាមេរ៉ា</span>
+        </button>
+      </div>
+
+      <div class="pt-4 border-t border-slate-800/80">
+        <label class="block text-xs font-medium text-slate-300 mb-1.5">វាយលេខ Tracking ដោយដៃ ឬបាញ់ដោយម៉ាស៊ីនស្កេនដៃ៖</label>
+        <div class="flex gap-2">
+          <input type="text" id="scan-manual-tracking-input" onkeydown="if(event.key==='Enter') handleScanManualSubmit()" placeholder="ស្កេន ឬវាយលេខ Tracking រួចចុច Enter..." class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white outline-none focus:ring-2 focus:ring-cyan-500">
+          <button onclick="handleScanManualSubmit()" class="bg-cyan-600 hover:bg-cyan-500 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition">បញ្ចូល</button>
+        </div>
+      </div>
+
+      <div id="last-scan-feedback" class="hidden p-3.5 rounded-2xl bg-cyan-950/60 border border-cyan-500/40 flex items-center justify-between text-xs">
+        <div class="flex items-center space-x-2.5">
+          <img id="last-scan-thumb" src="https://placehold.co/60x60/1e293b/white?text=OK" class="w-10 h-10 rounded-xl object-cover border border-cyan-500/40">
+          <div>
+            <p class="font-bold text-white" id="last-scan-code-txt">TRK-0000</p>
+            <p class="text-[11px] text-cyan-300" id="last-scan-meta-txt">ស្កេនចូលរួចរាល់</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="btn-view-last-info" onclick="reopenLastInstantInfo()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 font-semibold text-[11px]">ព័ត៌មានលម្អិត</button>
+          <button onclick="switchNavTab('records')" class="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-[11px]">មើលក្នុងតារាង →</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ================= TAB 2: INVENTORY RECORDS VIEW ================= -->
+  <main id="tab-records" class="max-w-7xl mx-auto px-4 py-6 flex-1 w-full space-y-5 hidden z-10 relative">
+    <div class="glass-box border border-cyan-500/30 rounded-3xl p-4 sm:p-5 shadow-xl space-y-3">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center space-x-2">
+          <i data-lucide="calendar-check" class="w-5 h-5 text-cyan-400"></i>
+          <h3 class="text-sm font-bold text-white">សង្ខេបចំនួនស្តុកចូល និងស្តុកចេញប្រចាំថ្ងៃ (Daily Stock Counter)</h3>
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="text-xs text-slate-400">ជ្រើសរើសថ្ងៃខែឆ្នាំ៖</label>
+          <input type="date" id="daily-summary-date" onchange="updateDailySummaryStats()" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-cyan-300 font-mono outline-none focus:ring-2 focus:ring-cyan-500">
+          <button onclick="setDailyDateToday()" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs text-slate-300">ថ្ងៃនេះ</button>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div class="bg-slate-900/90 border border-emerald-500/30 rounded-2xl p-3.5 flex items-center justify-between">
+          <div>
+            <p class="text-xs text-slate-400">ស្តុកចូលក្នុងថ្ងៃ (Daily Stock In)</p>
+            <h4 id="daily-stat-in" class="text-2xl font-black text-emerald-400 font-mono mt-0.5">0</h4>
+          </div>
+          <div class="p-3 rounded-xl bg-emerald-500/15 text-emerald-400"><i data-lucide="arrow-down-left" class="w-6 h-6"></i></div>
+        </div>
+        <div class="bg-slate-900/90 border border-amber-500/30 rounded-2xl p-3.5 flex items-center justify-between">
+          <div>
+            <p class="text-xs text-slate-400">ស្តុកចេញ/បើករួចរាល់ក្នុងថ្ងៃ (Opened)</p>
+            <h4 id="daily-stat-out" class="text-2xl font-black text-amber-400 font-mono mt-0.5">0</h4>
+          </div>
+          <div class="p-3 rounded-xl bg-amber-500/15 text-amber-400"><i data-lucide="arrow-up-right" class="w-6 h-6"></i></div>
+        </div>
+        <div class="bg-slate-900/90 border border-sky-500/30 rounded-2xl p-3.5 flex items-center justify-between">
+          <div>
+            <p class="text-xs text-slate-400">ដឹកជញ្ជូន & ផ្ញើក្នុងថ្ងៃ (Daily Delivery)</p>
+            <h4 id="daily-stat-delivery" class="text-2xl font-black text-sky-400 font-mono mt-0.5">0</h4>
+          </div>
+          <div class="p-3 rounded-xl bg-sky-500/15 text-sky-400"><i data-lucide="truck" class="w-6 h-6"></i></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="glass-box border border-slate-800/80 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+      <div class="p-5 border-b border-slate-800/80 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-center space-x-3">
+            <div class="p-2.5 rounded-xl bg-purple-500/20 text-purple-400 border border-purple-500/30">
+              <i data-lucide="database" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h2 class="font-bold text-base">កំណត់ត្រាស្តុកទំនិញ (Realtime Sync)</h2>
+              <p class="text-xs text-slate-400">បង្ហាញស្ថានភាព Stock In, បើករួចរាល់, បានរៀបដឹកជូនភ្ញៀវ និង បានប្រគល់ជូនភ្ញៀវរួចរាល់</p>
+            </div>
+          </div>
+          <div class="flex items-center space-x-2">
+            <span id="inventory-count-badge" class="text-xs px-3 py-1.5 rounded-full bg-slate-800 text-cyan-400 border border-slate-700 font-mono font-bold">0 មុខ</span>
+            <button onclick="switchNavTab('scanner')" class="bg-cyan-600 hover:bg-cyan-500 text-white px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center space-x-1">
+              <i data-lucide="scan" class="w-3.5 h-3.5"></i><span>ទៅស្កេនបន្ថែម</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-12 gap-2">
+          <div class="sm:col-span-3">
+            <input type="text" id="filter-search-input" oninput="applyFilters()" placeholder="ស្វែងរកលេខ Tracking..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:ring-2 focus:ring-cyan-500">
+          </div>
+          <div class="sm:col-span-2">
+            <input type="date" id="filter-date-input" onchange="applyFilters()" title="ជ្រើសរើសថ្ងៃខែឆ្នាំ" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-2 text-xs text-cyan-300 font-mono outline-none focus:ring-2 focus:ring-cyan-500">
+          </div>
+          <div class="sm:col-span-3">
+            <select id="filter-status-select" onchange="applyFilters()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-2 text-xs text-white outline-none font-semibold">
+              <option value="ALL">គ្រប់ប្រភេទអីវ៉ាន់ (All Types)</option>
+              <option value="IN_STOCK">📦 Stock In / មិនទាន់បើក</option>
+              <option value="OPENED">📂 បើករួចរាល់ (Opened)</option>
+              <option value="DELIVERY_ALL">🚚 ដឹកជញ្ជូនទាំងអស់ (All Delivery)</option>
+              <option value="DISPATCHED">🛵 បានរៀបដឹកជូនភ្ញៀវ (Dispatched)</option>
+              <option value="DELIVERED">✅ បានប្រគល់ជូនភ្ញៀវរួចរាល់ (Delivered)</option>
+              <option value="PROVINCE">🗺️ អីវ៉ាន់ផ្ញើតាមស្រុក (Province)</option>
+            </select>
+          </div>
+          <div class="sm:col-span-2">
+            <select id="filter-branch-select" onchange="applyFilters()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-2 text-xs text-white outline-none"></select>
+          </div>
+          <div class="sm:col-span-2 flex gap-1.5">
+            <button onclick="clearFilters()" title="Reset Filters" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 rounded-xl text-xs flex items-center justify-center"><i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i></button>
+            <button onclick="exportFilteredToExcel()" title="Export Excel" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded-xl text-xs font-semibold flex items-center justify-center space-x-1"><i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i><span>Excel</span></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-slate-950/90 text-slate-400 uppercase font-semibold border-b border-slate-800">
+            <tr>
+              <th class="px-4 py-3">រូបភាព</th>
+              <th class="px-4 py-3">Tracking & សាខា</th>
+              <th class="px-4 py-3">Delivery / ក្រុមហ៊ុនដឹកជញ្ជូន</th>
+              <th class="px-4 py-3">ស្ថានភាព (Status)</th>
+              <th class="px-4 py-3">ប្រតិបត្តិការ (Transaction)</th>
+              <th class="px-4 py-3 text-right">សកម្មភាព</th>
+            </tr>
+          </thead>
+          <tbody id="inventory-tbody" class="divide-y divide-slate-800/60"></tbody>
+        </table>
+      </div>
+
+      <div id="table-empty-box" class="py-16 text-center space-y-2">
+        <i data-lucide="package-search" class="w-8 h-8 text-slate-600 mx-auto"></i>
+        <p class="text-xs text-slate-500">មិនមានទិន្នន័យស្របតាមការស្វែងរកឡើយ</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- ================= TAB: DELIVERY MANAGEMENT ================= -->
+  <main id="tab-delivery" class="max-w-3xl mx-auto px-4 py-6 flex-1 w-full space-y-5 hidden z-10 relative">
+    <div class="glass-box border border-amber-500/30 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-5">
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4">
+        <div class="flex items-center space-x-3">
+          <div class="p-2.5 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
+            <i data-lucide="truck" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <h2 class="font-bold text-base">ផ្នែកគ្រប់គ្រងការដឹកជញ្ជូន (Delivery Operations)</h2>
+            <p class="text-xs text-slate-400">ស្កេនដើម្បី Update ស្ថានភាពដោយផ្ទាល់ទៅកាន់ <span class="text-cyan-400 font-semibold">កំណត់ត្រាស្តុក</span> + Auto-Zoom ~2.0x</p>
+          </div>
+        </div>
+
+        <div class="flex bg-slate-950 p-1.5 rounded-2xl border border-slate-800 text-xs font-bold">
+          <button id="del-subtab-btn-dispatch" onclick="switchDeliverySubTab('dispatch')" class="px-3.5 py-2 rounded-xl bg-amber-600 text-white transition flex items-center space-x-1.5">
+            <i data-lucide="package-plus" class="w-4 h-4"></i><span>១. រៀបដឹកជូនភ្ញៀវ (Dispatch)</span>
+          </button>
+          <button id="del-subtab-btn-delivered" onclick="switchDeliverySubTab('delivered')" class="px-3.5 py-2 rounded-xl text-slate-400 hover:text-white transition flex items-center space-x-1.5">
+            <i data-lucide="check-circle" class="w-4 h-4"></i><span>២. ប្រគល់ជូនភ្ញៀវរួច (Delivered)</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="space-y-4">
+        <div id="delivery-carrier-box" class="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-700/80 space-y-1.5">
+          <label class="text-[11px] text-slate-400 flex items-center justify-between font-medium">
+            <span class="flex items-center space-x-1.5"><i data-lucide="bike" class="w-3.5 h-3.5 text-amber-400"></i><span>ជ្រើសរើសប្រភេទដឹកជញ្ជូន៖</span></span>
+            <button type="button" onclick="openAddDeliveryModal()" class="text-[10px] text-cyan-400 underline">+ បន្ថែម</button>
+          </label>
+          <select id="delivery-tab-carrier" class="w-full bg-slate-800 border border-slate-600 rounded-xl px-3 py-2 text-xs text-amber-300 font-bold outline-none"></select>
+        </div>
+
+        <!-- DELIVERY SCANNER VIEWPORT WITH ZOOM CONTROLS -->
+        <div class="scanner-viewport-box rounded-2xl min-h-[280px] border-2 border-amber-500/40 flex items-center justify-center relative">
+          <div id="delivery-reader" class="w-full"></div>
+          <div id="delivery-laser-line" class="laser-line-anim hidden"></div>
+          
+          <div id="delivery-overlay-controls" class="hidden absolute top-2.5 right-2.5 left-2.5 z-20 flex flex-wrap items-center justify-between gap-1.5 bg-black/60 backdrop-blur-md p-2 rounded-2xl border border-amber-500/30">
+            <div class="flex items-center gap-1">
+              <span class="px-2 py-0.5 rounded-full bg-amber-500/20 text-[10px] text-amber-400 font-mono">2.0x</span>
+              <button type="button" onclick="setZoomLevel('delivery', 1)" class="zoom-btn-delivery-1 px-1.5 py-0.5 rounded bg-slate-800 text-[10px] font-bold text-white">1x</button>
+              <button type="button" onclick="setZoomLevel('delivery', 2)" class="zoom-btn-delivery-2 px-1.5 py-0.5 rounded bg-amber-600 text-[10px] font-bold text-white">2x</button>
+              <button type="button" onclick="setZoomLevel('delivery', 3)" class="zoom-btn-delivery-3 px-1.5 py-0.5 rounded bg-slate-800 text-[10px] font-bold text-white">3x</button>
+              <input type="range" id="zoom-slider-delivery" min="1" max="5" step="0.5" value="2" oninput="onZoomSliderChange('delivery', this.value)" class="w-16 accent-amber-400 cursor-pointer hidden sm:block">
+            </div>
+            <div class="flex items-center gap-1">
+              <button type="button" onclick="toggleFocusBarcode()" class="focus-barcode-btn px-2 py-0.5 rounded text-[10px] font-bold border">🎯 Focus</button>
+              <button id="btn-delivery-torch" onclick="toggleScannerTorch('delivery')" class="px-2 py-0.5 rounded bg-slate-900 text-amber-300 border border-amber-500/40 text-[10px] font-bold flex items-center gap-1">
+                <i data-lucide="flashlight" class="w-3 h-3"></i><span id="lbl-delivery-torch">ពន្លឺ</span>
+              </button>
+            </div>
+          </div>
+
+          <div id="delivery-camera-idle" class="text-center p-5 space-y-2">
+            <i data-lucide="camera" class="w-8 h-8 text-amber-400 mx-auto"></i>
+            <p class="text-xs text-slate-400">បើកកាមេរ៉ាស្កេនកញ្ចប់អីវ៉ាន់ (Auto-Zoom ~2.0x ស្រាប់)</p>
+          </div>
+        </div>
+
+        <div class="flex gap-2">
+          <button id="btn-del-cam-start" onclick="startDeliveryScannerCamera()" class="flex-1 bg-amber-600 hover:bg-amber-500 text-white py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5">
+            <i data-lucide="scan" class="w-4 h-4"></i><span>បើកកាមេរ៉ាស្កេន</span>
+          </button>
+          <button id="btn-del-cam-stop" onclick="stopDeliveryScannerCamera()" class="hidden flex-1 bg-rose-600 text-white py-3 rounded-xl text-xs font-bold">បិទកាមេរ៉ា</button>
+        </div>
+
+        <div class="pt-3 border-t border-slate-800">
+          <label id="lbl-delivery-input-title" class="block text-xs font-medium text-amber-300 mb-1.5">១. ស្កេនអីវ៉ាន់ចេញដឹកជូនភ្ញៀវ (Update ស្ថានភាព → បានរៀបដឹកជូនភ្ញៀវ)៖</label>
+          <div class="flex gap-2">
+            <input type="text" id="delivery-manual-input" onkeydown="if(event.key==='Enter') handleDeliveryManualSubmit()" placeholder="ស្កេន ឬវាយលេខ Tracking..." class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none focus:ring-2 focus:ring-amber-500">
+            <button onclick="handleDeliveryManualSubmit()" id="btn-delivery-manual-submit" class="bg-amber-600 hover:bg-amber-500 text-white px-5 py-2.5 rounded-xl text-xs font-bold">បញ្ចូល</button>
+          </div>
+        </div>
+
+        <div id="delivery-last-updated-box" class="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-700/80 flex items-center justify-between text-xs">
+          <div class="flex items-center space-x-2.5">
+            <i data-lucide="refresh-cw" class="w-4 h-4 text-cyan-400"></i>
+            <span id="delivery-last-updated-text" class="text-slate-300">រាល់ការស្កេននឹង Update ស្ថានភាពដោយផ្ទាល់ក្នុង <b class="text-white">កំណត់ត្រាស្តុក</b></span>
+          </div>
+          <button onclick="switchNavTab('records')" class="px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-[11px] shrink-0">មើលកំណត់ត្រាស្តុក →</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ================= TAB: PROVINCE SHIPPING ================= -->
+  <main id="tab-province" class="max-w-6xl mx-auto px-4 py-6 flex-1 w-full space-y-5 hidden z-10 relative">
+    <div class="glass-box border border-sky-500/30 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-5">
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4">
+        <div class="flex items-center space-x-3">
+          <div class="p-2.5 rounded-xl bg-sky-500/20 text-sky-400 border border-sky-500/30">
+            <i data-lucide="map-pin" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <h2 class="font-bold text-base">អីវ៉ាន់ផ្ញើតាមស្រុក / ខេត្ត (Province Shipping & Tracking Counter)</h2>
+            <p class="text-xs text-slate-400">ស្កេន Tracking ចូល (Auto-Zoom ~2.0x) → រក្សាទុក និង Update ស្ថានភាព <span class="text-amber-300 font-bold">បើករួចរាល់</span></p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 bg-sky-950/80 border border-sky-500/40 px-4 py-2 rounded-2xl">
+          <span class="text-xs text-sky-300">ចំនួន Tracking សរុប៖</span>
+          <span id="province-total-tracking-badge" class="text-lg font-black font-mono text-white">0</span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <div class="lg:col-span-5 space-y-3.5 bg-slate-900/70 p-4 rounded-2xl border border-slate-800">
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-xs text-slate-300 font-semibold">ក្រុមហ៊ុនដឹកជញ្ជូនតាមស្រុក (Shipping Company)</label>
+              <div class="flex items-center gap-1.5">
+                <button type="button" onclick="openAddProvCompanyModal()" class="px-2 py-0.5 rounded-lg bg-sky-600/30 hover:bg-sky-600 text-sky-300 hover:text-white border border-sky-500/40 text-[11px] font-bold transition">+ បន្ថែម</button>
+                <button type="button" onclick="deleteSelectedProvCompany()" class="px-2 py-0.5 rounded-lg bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/40 text-[11px] font-bold transition">លុប</button>
+              </div>
+            </div>
+            <select id="prov-input-company" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-sky-300 font-bold outline-none"></select>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2.5">
+            <div>
+              <label class="block text-xs text-slate-300 mb-1">លេខអ្នកទទួល (Receiver Phone)</label>
+              <input type="tel" id="prov-input-receiver" oninput="syncActiveProvinceDraftMeta()" placeholder="012 345 678" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:ring-2 focus:ring-sky-500">
+            </div>
+            <div>
+              <label class="block text-xs text-slate-300 mb-1">លេខអ្នកផ្ញើ (Sender Phone)</label>
+              <input type="tel" id="prov-input-sender" oninput="syncActiveProvinceDraftMeta()" placeholder="098 765 432" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:ring-2 focus:ring-sky-500">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs text-slate-300 mb-1">ទីតាំង / ខេត្ត-ស្រុកគោលដៅ (Location)</label>
+            <input type="text" id="prov-input-location" oninput="syncActiveProvinceDraftMeta()" placeholder="ឧ. សៀមរាប, បាត់ដំបង, កំពត..." class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:ring-2 focus:ring-sky-500">
+          </div>
+
+          <!-- PROVINCE SCANNER VIEWPORT WITH ZOOM CONTROLS -->
+          <div class="scanner-viewport-box rounded-2xl min-h-[220px] border border-sky-500/40 flex items-center justify-center relative">
+            <div id="province-reader" class="w-full"></div>
+            
+            <div id="province-overlay-controls" class="hidden absolute top-2 right-2 left-2 z-20 flex flex-wrap items-center justify-between gap-1 bg-black/60 backdrop-blur-md p-1.5 rounded-xl border border-sky-500/30">
+              <div class="flex items-center gap-1">
+                <span class="px-1.5 py-0.5 rounded bg-sky-500/20 text-[9px] text-sky-300 font-mono">2.0x</span>
+                <button type="button" onclick="setZoomLevel('province', 1)" class="zoom-btn-province-1 px-1 rounded bg-slate-800 text-[9px] font-bold text-white">1x</button>
+                <button type="button" onclick="setZoomLevel('province', 2)" class="zoom-btn-province-2 px-1 rounded bg-sky-600 text-[9px] font-bold text-white">2x</button>
+                <button type="button" onclick="setZoomLevel('province', 3)" class="zoom-btn-province-3 px-1 rounded bg-slate-800 text-[9px] font-bold text-white">3x</button>
+                <input type="range" id="zoom-slider-province" min="1" max="5" step="0.5" value="2" oninput="onZoomSliderChange('province', this.value)" class="w-14 accent-sky-400 cursor-pointer hidden sm:block">
+              </div>
+              <div class="flex items-center gap-1">
+                <button type="button" onclick="toggleFocusBarcode()" class="focus-barcode-btn px-1.5 py-0.5 rounded text-[9px] font-bold border">🎯</button>
+                <button id="btn-province-torch" onclick="toggleScannerTorch('province')" class="px-1.5 py-0.5 rounded bg-slate-900 text-amber-300 border border-amber-500/40 text-[9px] font-bold flex items-center gap-0.5">
+                  <i data-lucide="flashlight" class="w-2.5 h-2.5"></i><span id="lbl-province-torch">ពន្លឺ</span>
+                </button>
+              </div>
+            </div>
+
+            <div id="province-camera-idle" class="text-center p-4 space-y-1.5">
+              <i data-lucide="qr-code" class="w-7 h-7 text-sky-400 mx-auto"></i>
+              <p class="text-[11px] text-slate-400">ស្កេន Tracking ផ្ញើតាមស្រុក (Auto-Zoom ~2.0x)</p>
+            </div>
+          </div>
+
+          <div class="flex gap-2">
+            <button id="btn-prov-cam-start" onclick="startProvinceScannerCamera()" class="flex-1 bg-sky-600 hover:bg-sky-500 text-white py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5">
+              <i data-lucide="camera" class="w-4 h-4"></i><span>បើកកាមេរ៉ាស្កេន</span>
+            </button>
+            <button id="btn-prov-cam-stop" onclick="stopProvinceScannerCamera()" class="hidden flex-1 bg-rose-600 text-white py-2 rounded-xl text-xs font-bold">បិទកាមេរ៉ា</button>
+          </div>
+
+          <div class="pt-2 border-t border-slate-800">
+            <label class="block text-xs font-semibold text-sky-300 mb-1">ស្កេន Tracking ចូល (រាប់ចំនួនស្វ័យប្រវត្តិ & Update បើករួចរាល់)៖</label>
+            <div class="flex gap-2">
+              <input type="text" id="prov-input-tracking" onkeydown="if(event.key==='Enter') handleProvinceTrackingSubmit()" placeholder="ស្កេន ឬវាយលេខ Tracking..." class="flex-1 bg-slate-950 border border-sky-500/50 rounded-xl px-3 py-2 text-xs text-white outline-none focus:ring-2 focus:ring-sky-500">
+              <button onclick="handleProvinceTrackingSubmit()" class="bg-sky-600 hover:bg-sky-500 text-white px-4 py-2 rounded-xl text-xs font-bold">+ បន្ថែម</button>
+            </div>
+
+            <div id="prov-batch-panel" class="mt-3 p-3 rounded-2xl bg-sky-950/50 border border-sky-500/40 space-y-2">
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-sky-300 font-semibold">កញ្ចប់បច្ចុប្បន្ន៖ <span id="prov-batch-count" class="font-mono text-white text-base font-black">0</span> Tracking</span>
+                <button onclick="startNewProvinceShipment()" class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold">+ វិក័យបត្រថ្មី (New Customer)</button>
+              </div>
+              <div id="prov-batch-chips" class="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="lg:col-span-7 space-y-3">
+          <div class="flex items-center justify-between gap-2">
+            <input type="text" id="prov-search-input" oninput="renderProvinceShipmentsTable()" placeholder="ស្វែងរក Tracking, លេខទូរស័ព្ទ, ទីតាំង..." class="w-full max-w-xs bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none">
+            <span id="prov-batch-counter" class="text-xs px-3 py-1.5 rounded-xl bg-sky-500/20 text-sky-300 font-mono font-bold shrink-0">សរុប: 0 Tracking</span>
+          </div>
+
+          <div class="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden">
+            <div class="overflow-x-auto max-h-[480px]">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-slate-950 text-slate-400 border-b border-slate-800">
+                  <tr>
+                    <th class="px-3.5 py-2.5">Shipping Company & Tracking</th>
+                    <th class="px-3.5 py-2.5">អ្នកទទួល / អ្នកផ្ញើ</th>
+                    <th class="px-3.5 py-2.5">ទីតាំង & ចំនួន</th>
+                    <th class="px-3.5 py-2.5 text-right">Print វិក័យបត្រ</th>
+                  </tr>
+                </thead>
+                <tbody id="province-tbody" class="divide-y divide-slate-800/60"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ================= TAB 3: PHYSICAL STOCK AUDIT ================= -->
+  <main id="tab-audit" class="max-w-7xl mx-auto px-4 py-6 flex-1 w-full space-y-6 hidden z-10 relative">
+    <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+      <div>
+        <h2 class="text-lg font-bold flex items-center space-x-2">
+          <i data-lucide="clipboard-check" class="w-5 h-5 text-emerald-400"></i><span>រាប់ស្តុកជាក់ស្តែង (Physical Stock Audit + Auto-Zoom)</span>
+        </h2>
+        <p class="text-xs text-slate-400">ផ្ទៀងផ្ទាត់ទំនិញជាក់ស្តែងជាមួយប្រព័ន្ធ</p>
+      </div>
+      <button onclick="clearAuditLog()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3.5 py-2 rounded-xl text-xs font-semibold">សម្អាតការរាប់</button>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div class="lg:col-span-5 space-y-4">
+        <div class="glass-box border rounded-3xl p-5 space-y-4">
+          <div class="scanner-viewport-box rounded-2xl min-h-[240px] border border-emerald-500/30 flex items-center justify-center relative">
+            <div id="audit-reader" class="w-full"></div>
+            
+            <div id="audit-overlay-controls" class="hidden absolute top-2 right-2 left-2 z-20 flex items-center justify-between gap-1 bg-black/60 backdrop-blur-md p-1.5 rounded-xl border border-emerald-500/30">
+              <div class="flex items-center gap-1">
+                <span class="text-[9px] text-emerald-400 font-mono">2.0x</span>
+                <button type="button" onclick="setZoomLevel('audit', 1)" class="zoom-btn-audit-1 px-1 rounded bg-slate-800 text-[9px] font-bold text-white">1x</button>
+                <button type="button" onclick="setZoomLevel('audit', 2)" class="zoom-btn-audit-2 px-1 rounded bg-emerald-600 text-[9px] font-bold text-white">2x</button>
+                <button type="button" onclick="setZoomLevel('audit', 3)" class="zoom-btn-audit-3 px-1 rounded bg-slate-800 text-[9px] font-bold text-white">3x</button>
+              </div>
+              <button id="btn-audit-torch" onclick="toggleScannerTorch('audit')" class="px-1.5 py-0.5 rounded bg-slate-900 text-amber-300 border text-[9px] font-bold">ពន្លឺ</button>
+            </div>
+
+            <div id="audit-camera-idle" class="text-center p-6 space-y-2">
+              <i data-lucide="camera-off" class="w-8 h-8 text-slate-500 mx-auto"></i>
+              <p class="text-xs text-slate-400">កាមេរ៉ាកំពុងបិទ (Auto-Zoom ~2.0x)</p>
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <button id="btn-audit-cam-start" onclick="startAuditScannerCamera()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded-xl text-xs font-semibold">បើកកាមេរ៉ារាប់</button>
+            <button id="btn-audit-cam-stop" onclick="stopAuditScannerCamera()" class="hidden flex-1 bg-slate-800 text-slate-300 py-2 rounded-xl text-xs font-semibold">បិទកាមេរ៉ា</button>
+          </div>
+          <div class="pt-2 border-t border-slate-800">
+            <div class="flex gap-2">
+              <input type="text" id="audit-manual-barcode" onkeydown="if(event.key==='Enter') handleAuditManualSubmit()" placeholder="វាយ ឬស្កេនលេខ Tracking..." class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none">
+              <button onclick="handleAuditManualSubmit()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-semibold">រាប់</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="lg:col-span-7">
+        <div class="glass-box border rounded-3xl overflow-hidden">
+          <div class="p-4 border-b border-slate-800 flex justify-between items-center">
+            <h3 class="font-bold text-sm">លទ្ធផលការរាប់ស្តុក</h3>
+            <span id="audit-count-badge" class="text-xs px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 font-mono">រាប់បាន 0 មុខ</span>
+          </div>
+          <div class="overflow-x-auto max-h-[420px]">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-900 text-slate-400 uppercase border-b border-slate-800">
+                <tr>
+                  <th class="px-4 py-3">Tracking</th>
+                  <th class="px-4 py-3">សាខា & Delivery</th>
+                  <th class="px-4 py-3">លទ្ធផលផ្ទៀងផ្ទាត់</th>
+                  <th class="px-4 py-3 text-right">ម៉ោងរាប់</th>
+                </tr>
+              </thead>
+              <tbody id="audit-log-tbody" class="divide-y divide-slate-800/60"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ================= TAB 4: RETURNS & CUSTOMER ISSUES ================= -->
+  <main id="tab-returns" class="max-w-7xl mx-auto px-4 py-6 flex-1 w-full space-y-6 hidden z-10 relative">
+    <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+      <div>
+        <h2 class="text-lg font-bold flex items-center space-x-2">
+          <i data-lucide="corner-down-left" class="w-5 h-5 text-rose-400"></i><span>គ្រប់គ្រងអីវ៉ាន់ Return និងបញ្ហាទំនិញ</span>
+        </h2>
+        <p class="text-xs text-slate-400">កត់ត្រាការបង្វិលទំនិញចូលឃ្លាំងតាមសាខានីមួយៗ</p>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="openReturnModal()" class="bg-rose-600 hover:bg-rose-500 text-white px-3.5 py-2 rounded-xl text-xs font-semibold">+ កត់ត្រា Return</button>
+        <button onclick="openCustomerIssueModal()" class="bg-amber-600 hover:bg-amber-500 text-white px-3.5 py-2 rounded-xl text-xs font-semibold">+ បញ្ហាភ្ញៀវយកមកវិញ</button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="glass-box border rounded-3xl p-5 space-y-4">
+        <h3 class="font-bold text-sm text-rose-400">បញ្ជីអីវ៉ាន់ Return</h3>
+        <div class="overflow-x-auto max-h-[400px]">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-900 text-slate-400 border-b border-slate-800">
+              <tr>
+                <th class="px-3 py-2">រូប</th>
+                <th class="px-3 py-2">Tracking & សាខា</th>
+                <th class="px-3 py-2">មូលហេតុ</th>
+                <th class="px-3 py-2 text-right">សកម្មភាព</th>
+              </tr>
+            </thead>
+            <tbody id="returns-tbody" class="divide-y divide-slate-800/60"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="glass-box border rounded-3xl p-5 space-y-4">
+        <h3 class="font-bold text-sm text-amber-400">បញ្ជីភ្ញៀវយកមកវិញ (ខូច / ខុសពណ៌ / ខុស Size)</h3>
+        <div class="overflow-x-auto max-h-[400px]">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-900 text-slate-400 border-b border-slate-800">
+              <tr>
+                <th class="px-3 py-2">រូប</th>
+                <th class="px-3 py-2">Tracking & សាខា</th>
+                <th class="px-3 py-2">បញ្ហា</th>
+                <th class="px-3 py-2 text-right">សកម្មភាព</th>
+              </tr>
+            </thead>
+            <tbody id="customer-issues-tbody" class="divide-y divide-slate-800/60"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ================= TAB 5: SYSTEM SETTINGS ================= -->
+  <main id="tab-settings" class="max-w-5xl mx-auto px-4 py-6 flex-1 w-full hidden z-10 relative">
+    <div class="glass-box border border-slate-800 rounded-3xl p-6 space-y-6">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div>
+          <h2 class="text-lg font-bold">System Settings & Integrations (Admin Only)</h2>
+          <p class="text-xs text-slate-400">គ្រប់គ្រងសាខា ប្រភេទ Delivery ក្រុមហ៊ុនដឹកជញ្ជូនតាមស្រុក Telegram Bot បុគ្គលិក និង Firebase Cloud</p>
+        </div>
+        <span class="text-xs bg-amber-500/20 text-amber-400 px-3 py-1 rounded-full font-mono border border-amber-500/30">ADMIN SECURED</span>
+      </div>
+
+      <div class="bg-slate-900/80 border border-sky-500/40 rounded-2xl p-5 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+          <div class="flex items-center space-x-2.5">
+            <div class="p-2 rounded-xl bg-sky-500/20 text-sky-400"><i data-lucide="send" class="w-5 h-5"></i></div>
+            <div>
+              <h3 class="text-sm font-bold text-sky-300">ការជូនដំណឹងតាម Telegram Bot & Telegram Groups</h3>
+              <p class="text-[11px] text-slate-400">ផ្ញើសារជូនដំណឹងភ្លាមៗទៅកាន់ Telegram Groups រាល់ពេលស្កេនស្តុក ដឹកជញ្ជូន ឬផ្ញើតាមស្រុក</p>
+            </div>
+          </div>
+          <label class="inline-flex items-center space-x-2 cursor-pointer text-xs font-bold text-emerald-400">
+            <input type="checkbox" id="tg-enabled-checkbox" onchange="saveTelegramSettings()" class="w-4 h-4 rounded accent-sky-500">
+            <span>បើកដំណើរការ Telegram Alert</span>
+          </label>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
+          <div class="md:col-span-8">
+            <label class="block text-xs text-slate-300 mb-1">Telegram Bot Token (ពី @BotFather)</label>
+            <input type="text" id="tg-bot-token" placeholder="ឧ. 7123456789:AAHxxxxxxxxxxxxxxxxxxxxxxxxxxxx" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-white outline-none focus:ring-2 focus:ring-sky-500">
+          </div>
+          <div class="md:col-span-4 flex items-end gap-2">
+            <button type="button" onclick="saveTelegramSettings()" class="flex-1 bg-sky-600 hover:bg-sky-500 text-white py-2 rounded-xl text-xs font-bold transition">រក្សាទុក Token</button>
+            <button type="button" onclick="testTelegramNotification()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-xl text-xs font-bold transition">Test សាកល្បង</button>
+          </div>
+        </div>
+
+        <div class="bg-slate-950/90 p-3.5 rounded-xl border border-slate-800 space-y-3">
+          <p class="text-xs font-bold text-slate-300">បន្ថែម Telegram Groups សម្រាប់ទទួលការជូនដំណឹង (Group Chat IDs)៖</p>
+          <div class="grid grid-cols-1 sm:grid-cols-12 gap-2">
+            <input type="text" id="tg-new-group-name" placeholder="ឈ្មោះ Group (ឧ. ក្រុមឃ្លាំងកណ្តាល)" class="sm:col-span-5 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white outline-none">
+            <input type="text" id="tg-new-group-chatid" placeholder="Chat ID (ឧ. -1001234567890)" class="sm:col-span-5 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono text-white outline-none">
+            <button type="button" onclick="addTelegramGroup()" class="sm:col-span-2 bg-cyan-600 hover:bg-cyan-500 text-white py-2 rounded-lg text-xs font-bold">+ បន្ថែម Group</button>
+          </div>
+          <div id="tg-groups-list" class="space-y-1.5 pt-1"></div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-4 space-y-3">
+          <h3 class="text-sm font-bold text-cyan-400 flex items-center space-x-2">
+            <i data-lucide="building-2" class="w-4 h-4"></i><span>គ្រប់គ្រងសាខា (Branches)</span>
+          </h3>
+          <div class="flex gap-2">
+            <input type="text" id="new-branch-name" placeholder="ឈ្មោះសាខាថ្មី..." class="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white outline-none">
+            <button onclick="addNewBranch()" class="bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1.5 rounded-xl text-xs font-semibold">+ បន្ថែម</button>
+          </div>
+          <div id="branches-list-badges" class="flex flex-wrap gap-1.5 pt-1"></div>
+        </div>
+
+        <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-4 space-y-3">
+          <h3 class="text-sm font-bold text-amber-400 flex items-center space-x-2">
+            <i data-lucide="truck" class="w-4 h-4"></i><span>គ្រប់គ្រងប្រភេទ Delivery</span>
+          </h3>
+          <div class="flex gap-2">
+            <input type="text" id="settings-new-delivery" placeholder="បន្ថែម Delivery ថ្មី..." class="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white outline-none">
+            <button onclick="addDeliveryFromSettings()" class="bg-amber-600 hover:bg-amber-500 text-white px-3 py-1.5 rounded-xl text-xs font-semibold">+ បន្ថែម</button>
+          </div>
+          <div id="deliveries-list-badges" class="flex flex-wrap gap-1.5 pt-1"></div>
+        </div>
+
+        <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-4 space-y-3">
+          <h3 class="text-sm font-bold text-sky-400 flex items-center space-x-2">
+            <i data-lucide="map-pin" class="w-4 h-4"></i><span>ក្រុមហ៊ុនដឹកជញ្ជូនតាមស្រុក</span>
+          </h3>
+          <div class="flex gap-2">
+            <input type="text" id="settings-new-prov-company" placeholder="បន្ថែមក្រុមហ៊ុន..." class="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white outline-none">
+            <button onclick="addProvCompanyFromSettings()" class="bg-sky-600 hover:bg-sky-500 text-white px-3 py-1.5 rounded-xl text-xs font-semibold">+ បន្ថែម</button>
+          </div>
+          <div id="prov-companies-list-badges" class="flex flex-wrap gap-1.5 pt-1"></div>
+        </div>
+      </div>
+
+      <div class="bg-slate-900/70 border border-cyan-500/30 rounded-2xl p-5 space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-bold text-white">គណនីបុគ្គលិករង់ចាំ Approve</h3>
+          <span id="lbl-pending-badge-text" class="text-xs bg-rose-500/20 text-rose-300 px-2.5 py-0.5 rounded-full">0 រង់ចាំ</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-950 text-slate-400 border-b border-slate-800">
+              <tr>
+                <th class="px-3 py-2">ឈ្មោះ & Email</th>
+                <th class="px-3 py-2">Username</th>
+                <th class="px-3 py-2">សាខា (Branch)</th>
+                <th class="px-3 py-2">Role</th>
+                <th class="px-3 py-2 text-right">សកម្មភាព</th>
+              </tr>
+            </thead>
+            <tbody id="pending-users-tbody" class="divide-y divide-slate-800/60"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="bg-slate-900/70 border border-purple-500/30 rounded-2xl p-5 space-y-3">
+        <h3 class="text-sm font-bold text-purple-300">គ្រប់គ្រង Role (បន្ថែម Role ថ្មី)</h3>
+        <div class="flex gap-2">
+          <input type="text" id="settings-new-role" onkeydown="if(event.key==='Enter') addRole()" placeholder="ឈ្មោះ Role ថ្មី ឧ. Cashier, Driver..." class="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white outline-none">
+          <button onclick="addRole()" class="bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded-xl text-xs font-semibold">+ បន្ថែម Role</button>
+        </div>
+        <div id="roles-list-badges" class="flex flex-wrap gap-1.5 pt-1"></div>
+      </div>
+
+      <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 space-y-4">
+        <h3 class="text-sm font-bold text-purple-400">បន្ថែម និងកំណត់សិទ្ធិបុគ្គលិកតាមសាខា</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-5 gap-2 bg-slate-950 p-3 rounded-xl border border-slate-800">
+          <input type="text" id="new-user-fullname" placeholder="ឈ្មោះពេញ" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none">
+          <input type="text" id="new-user-username" placeholder="Username" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none">
+          <input type="text" id="new-user-pass" placeholder="Password" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none">
+          <select id="new-user-branch" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white outline-none"></select>
+          <div class="flex gap-1">
+            <select id="new-user-role" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white outline-none"></select>
+            <button onclick="addNewUser()" class="bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold">+</button>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-950 text-slate-400 border-b border-slate-800">
+              <tr>
+                <th class="px-3 py-2">ឈ្មោះ</th>
+                <th class="px-3 py-2">Username</th>
+                <th class="px-3 py-2">សាខាដែលគ្រប់គ្រង</th>
+                <th class="px-3 py-2">Role</th>
+                <th class="px-3 py-2 text-right">សកម្មភាព</th>
+              </tr>
+            </thead>
+            <tbody id="users-tbody" class="divide-y divide-slate-800/60"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-4 space-y-3">
+          <h3 class="text-sm font-bold text-cyan-300">☁️ Firebase Cloud Realtime Sync</h3>
+          <p class="text-[11px] text-slate-400">ភ្ជាប់ Firebase Realtime Database ដើម្បី Sync ទិន្នន័យគ្រប់សាខា និងគ្រប់ឧបករណ៍។</p>
+          <div class="flex gap-2">
+            <button type="button" onclick="openCloudSetupModal()" class="bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold">កំណត់ Firebase Config</button>
+            <button type="button" onclick="forceUploadAllToCloud()" class="bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 px-3 py-1.5 rounded-lg text-xs">⬆ Sync ទៅ Cloud</button>
+          </div>
+        </div>
+
+        <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-4 space-y-2">
+          <h3 class="text-sm font-bold text-emerald-400">Branding & Admin Password</h3>
+          <input type="text" id="cfg-app-title" placeholder="ឈ្មោះប្រព័ន្ធ" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white outline-none">
+          <input type="password" id="cfg-new-admin-pass" placeholder="ប្តូរពាក្យសម្ងាត់ Admin ថ្មី (ទុកទទេបើមិនប្តូរ)" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white outline-none">
+          <button onclick="saveSystemSettings()" class="w-full bg-amber-600 hover:bg-amber-500 text-white py-1.5 rounded-lg text-xs font-semibold">រក្សាទុកការកំណត់</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <canvas id="snapshot-canvas" class="hidden"></canvas>
+
+  <!-- ================= FIREBASE CLOUD SETUP MODAL ================= -->
+  <div id="cloud-setup-modal" class="fixed inset-0 z-[70] flex items-center justify-center bg-black/85 backdrop-blur-md p-4 hidden">
+    <div class="bg-slate-900 border border-cyan-500/40 rounded-3xl p-5 max-w-lg w-full shadow-2xl space-y-3">
+      <h3 class="text-base font-bold text-cyan-300">☁️ ភ្ជាប់ Firebase Cloud (Realtime Sync)</h3>
+      <p class="text-[11px] text-slate-400 leading-relaxed">
+        ចម្លង <b>firebaseConfig</b> ពី Firebase Console (Project Settings -> Your Apps -> Web) មកបិទភ្ជាប់ខាងក្រោម៖
+      </p>
+      <textarea id="cloud-cfg-input" rows="8" spellcheck="false" placeholder='{
+  "apiKey": "AIza...",
+  "authDomain": "your-app.firebaseapp.com",
+  "databaseURL": "https://your-app-default-rtdb.firebaseio.com",
+  "projectId": "your-app",
+  "appId": "1:..."
+}' class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-[11px] font-mono text-white outline-none"></textarea>
+      <div class="flex justify-end gap-2 pt-1">
+        <button type="button" onclick="disconnectCloud()" class="px-3 py-1.5 rounded-lg text-xs bg-rose-600/80 text-white">ផ្តាច់ Cloud</button>
+        <button type="button" onclick="closeCloudSetupModal()" class="px-3 py-1.5 rounded-lg text-xs bg-slate-700 text-white">បិទ</button>
+        <button type="button" onclick="saveCloudConfig()" class="px-3 py-1.5 rounded-lg text-xs bg-cyan-600 hover:bg-cyan-500 text-white font-semibold">រក្សាទុក & ភ្ជាប់</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= CORE JAVASCRIPT ENGINE WITH ZOOM CONTROLS ================= -->
+  <script src="js/app.js"></script>
+
+  <script src="js/features.js"></script>
+
+  <!-- FIREBASE REALTIME CLOUD SYNC -->
+  <script src="js/firebase-sync.js"></script>
+  <script src="js/register-sw.js"></script>
+</body>
+</html>
